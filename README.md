@@ -1,10 +1,11 @@
 # Robô Zelo: triagem e despacho automático de zeladoria urbana (RPA + IA)
 
-Global Solution 2026.2 da FIAP (CitizenTech), disciplina **AI for Robotic Process Automation**.
+Projeto da Global Solution 2026.2 da FIAP (CitizenTech) para a disciplina AI for Robotic Process Automation.
 
-Este robô é a parte de back-office do **Zelo**, a mesma solução das outras disciplinas da GS
-(app de relatos em [gs-front](https://github.com/gabrielpalmeiraa/gs-front)). O app atende o cidadão;
-o robô faz o trabalho repetitivo que hoje cai no colo dos servidores da Prefeitura.
+O Zelo é a solução que nosso grupo desenvolveu em todas as disciplinas da GS. O app onde o cidadão
+faz o relato está no repositório [gs-front](https://github.com/gabrielpalmeiraa/gs-front). Este
+repositório é o robô que roda por trás: ele pega os relatos que chegaram, organiza e manda para quem
+precisa resolver. Hoje esse trabalho é feito à mão por servidores da Prefeitura.
 
 **Integrantes**
 
@@ -17,21 +18,21 @@ o robô faz o trabalho repetitivo que hoje cai no colo dos servidores da Prefeit
 
 ## 1. O problema
 
-Quem mais sofre com a falta de manutenção das ruas é quem anda a pé: idosos, pessoas com
-deficiência, usuários de transporte público e moradores da periferia. Só no primeiro semestre de
-2026, São Paulo recebeu quase 52 mil pedidos de tapa-buraco, cerca de 287 por dia
-([BNews](https://www.bnewssaopaulo.com.br/noticias/politica/mesmo-apos-recapeamento-sp-registra-quase-52-mil-pedidos-de-tapa-buraco.html)),
-e "buraco e pavimentação" já liderou os assuntos da Ouvidoria Geral do Município
+Rua mal conservada atrapalha mais quem anda a pé: idosos, pessoas com deficiência, quem depende de
+ônibus e quem mora na periferia. No primeiro semestre de 2026, São Paulo recebeu quase 52 mil pedidos
+de tapa-buraco, perto de 287 por dia
+([BNews](https://www.bnewssaopaulo.com.br/noticias/politica/mesmo-apos-recapeamento-sp-registra-quase-52-mil-pedidos-de-tapa-buraco.html)).
+"Buraco e pavimentação" também já foi o assunto mais reclamado na Ouvidoria Geral do Município
 ([relatório OGM](https://www.prefeitura.sp.gov.br/cidade/secretarias/upload/controladoria_geral/Rel_Triml_OGM-3o_trim_2023_publicacao_05_12_2023.pdf)).
 
-Os relatos chegam por canais diferentes, cada um num formato: a planilha exportada do SP156, a
-planilha que a subprefeitura preenche à mão e o app Zelo. Alguém precisa juntar tudo, descobrir o
-que é cada pedido, decidir o que é urgente, separar por órgão responsável, mandar para cada equipe
-e avisar o cidadão. Feito à mão, isso atrasa justamente os casos de risco (um fio caído pode
-esperar na mesma fila que um pedido de poda).
+Esses pedidos chegam por vários canais e cada um tem um formato: a planilha exportada do SP156, a
+planilha que a subprefeitura preenche à mão e o app Zelo. Alguém tem que juntar tudo, entender o que
+é cada pedido, ver o que é urgente, separar por órgão, mandar para cada equipe e avisar o cidadão.
+Quando isso é feito à mão, um fio caído pode ficar na mesma fila que um pedido de poda.
 
-**Público atendido:** o cidadão que fez o relato (recebe protocolo e prazo de referência) e o
-servidor da Prefeitura (recebe a fila já triada, priorizada e sem dados pessoais).
+Quem usa o resultado do robô:
+- o cidadão que fez o relato, que recebe o número de protocolo e um prazo de referência;
+- o servidor da Prefeitura, que recebe a fila já separada, ordenada por urgência e sem dados pessoais.
 
 ## 2. O que o robô faz
 
@@ -58,28 +59,28 @@ flowchart LR
     E --> REL[Relatório da execução<br/>+ log]
 ```
 
-Uma execução, sem intervenção:
+Passo a passo de uma execução (ninguém precisa mexer em nada no meio):
 
 1. Busca os relatos novos do app Zelo pela API (`GET /api/v1/gestor/relatos`). Se a API não estiver
-   configurada ou não responder, lê o arquivo exportado do app.
-2. Lê o CSV do SP156 e o Excel da subprefeitura, padroniza tudo num único formato e valida linha
-   a linha. Bairro desconhecido, descrição vazia ou data impossível vão para a **quarentena** com o
-   motivo; o resto segue.
-3. Remove CPF, telefone, e-mail e placa do texto. Nada com dado pessoal segue adiante.
-4. Descarta o que já foi processado em execuções anteriores (chave única no banco).
-5. Classifica o tipo de problema com um modelo de NLP local e calcula a urgência com regras
-   explicáveis, cruzando com a previsão de chuva do bairro.
-6. Grava tudo no SQLite, gera o protocolo e monta uma planilha de despacho por órgão, ordenada da
-   mais urgente para a menos urgente.
-7. Envia os e-mails: confirmação para o cidadão (só se ele autorizou), planilha para cada órgão
-   (com "[CRÍTICO]" no assunto quando for o caso) e relatório para a coordenação.
-8. O que o robô não resolve com segurança vai para `revisao_humana.xlsx`, com colunas para o
-   servidor preencher a decisão.
+   configurada ou não responder, usa o arquivo que o app exporta.
+2. Lê o CSV do SP156 e o Excel da subprefeitura e coloca tudo no mesmo formato. Depois confere linha
+   por linha. Se o bairro não existe, a descrição está vazia ou a data não faz sentido, a linha vai
+   para a quarentena junto com o motivo, e as outras continuam.
+3. Tira CPF, telefone, e-mail e placa do texto do relato.
+4. Pula o que já foi processado em outra execução (cada relato tem uma chave única no banco).
+5. Um modelo de NLP que roda na própria máquina diz qual é o tipo de problema. A urgência sai de
+   regras que levam em conta o texto e a previsão de chuva do bairro.
+6. Salva no SQLite, gera o protocolo e monta uma planilha para cada órgão, com os casos mais urgentes
+   no topo.
+7. Manda os e-mails: confirmação para o cidadão (só se ele autorizou contato), a planilha para cada
+   órgão (com "[CRÍTICO]" no assunto quando tem caso crítico) e um relatório para a coordenação.
+8. Os casos que o robô não consegue decidir com segurança vão para `revisao_humana.xlsx`, que tem
+   colunas para o servidor anotar a decisão.
 
 ## 3. Quadro de temas
 
-O robô usa **4 temas da disciplina**, mais a parte de IA. Cada um tem função real no fluxo: se
-qualquer um for removido, o robô deixa de entregar alguma coisa.
+Usamos 4 temas da disciplina, além da parte de IA. Tiramos qualquer um deles e o robô deixa de
+entregar alguma coisa.
 
 | Tema | Onde está no fluxo | O que resolve | Por que escolhemos |
 |---|---|---|---|
@@ -89,15 +90,15 @@ qualquer um for removido, o robô deixa de entregar alguma coisa.
 | **E-mail automatizado** | `zelo_robo/email_envio.py`: `smtplib` com STARTTLS, anexos Excel/Markdown, retry e fila de pendentes; modo "arquivo" gera `.eml` | Entrega o resultado para quem age: o órgão recebe a planilha, o cidadão recebe o protocolo, a coordenação recebe o relatório | E-mail é o canal que qualquer órgão público já usa; não exige que a equipe instale nada |
 | IA (base para os temas) | `zelo_robo/classificador.py` + `zelo_robo/regras.py` | Classifica o tipo de problema (TF-IDF de palavras e de caracteres + Regressão Logística) e decide urgência com regras auditáveis | Modelo local, gratuito e sem LLM: nenhum texto de cidadão sai da máquina. A probabilidade do modelo decide quando chamar um humano |
 
-**Como os temas se combinam:** o Pandas limpa o que entra; a IA decide; a API traz contexto para
-a decisão; o banco garante que nada é feito duas vezes e guarda o que falhou; o e-mail entrega o
-resultado e é reenviado pelo banco se o servidor cair. A planilha que o Pandas gera é o anexo que
-o e-mail entrega.
+Na prática, um tema depende do outro. O Pandas arruma os dados que chegam e a IA classifica. A API
+traz a previsão de chuva, que entra no cálculo da urgência. O banco evita trabalho repetido e guarda
+os e-mails que não foram enviados. E a planilha que o Pandas gera no fim é o anexo do e-mail que vai
+para cada órgão.
 
 ## 4. Como executar
 
-Requisitos: Python 3.10 ou mais novo. Testado com Python 3.13 no Linux; os comandos abaixo são
-para macOS/Linux (no Windows, troque `source .venv/bin/activate` por `.venv\Scripts\activate`).
+Precisa de Python 3.10 ou mais novo. Testamos com Python 3.13 no Linux e no macOS. Os comandos abaixo
+são para macOS/Linux. No Windows, troque `source .venv/bin/activate` por `.venv\Scripts\activate`.
 
 ```bash
 git clone https://github.com/gabrielpalmeiraa/gs-rpa.git
@@ -110,8 +111,9 @@ cp .env.example .env          # funciona sem editar nada (e-mail em modo "arquiv
 python main.py --resetar --demo
 ```
 
-O `--demo` cria um lote de exemplo em `entrada/` (com erros de propósito) e o robô processa tudo.
-No fim aparece um resumo e os resultados ficam em `saida/<data-hora>/`:
+O `--demo` cria um lote de exemplo em `entrada/`, já com alguns erros colocados de propósito, e o
+robô processa tudo. No fim ele mostra um resumo no terminal e salva os resultados em
+`saida/<data-hora>/`:
 
 | Arquivo | Conteúdo |
 |---|---|
@@ -122,9 +124,9 @@ No fim aparece um resumo e os resultados ficam em `saida/<data-hora>/`:
 | `outbox/*.eml` | todos os e-mails gerados (abrem no Mail/Outlook com os anexos) |
 | `logs/robo.log` | log completo de todas as execuções, sem dados pessoais |
 
-Um exemplo de cada saída está em [`docs/exemplo_saida/`](docs/exemplo_saida/).
+Deixamos um exemplo de cada um desses arquivos em [`docs/exemplo_saida/`](docs/exemplo_saida/).
 
-**Outros comandos**
+Outros comandos:
 
 ```bash
 python main.py                           # processa o que estiver em entrada/ (uso diário)
@@ -138,8 +140,9 @@ python -m scripts.treinar_modelo         # retreina o modelo (o robô também tr
 
 ### Configuração das chaves (`.env`)
 
-Nenhuma senha ou token fica no código: tudo é lido do `.env`, que está no `.gitignore`. O robô
-roda sem nenhuma chave (e-mail vira arquivo `.eml`, API do app vira arquivo JSON).
+Nenhuma senha ou token está no código. Tudo é lido do arquivo `.env`, que está no `.gitignore` e
+não vai para o GitHub. Dá para rodar sem configurar nada: os e-mails viram arquivos `.eml` e os
+relatos do app são lidos do arquivo JSON.
 
 | Variável | Para que serve | Obrigatória? |
 |---|---|---|
@@ -148,14 +151,14 @@ roda sem nenhuma chave (e-mail vira arquivo `.eml`, API do app vira arquivo JSON
 | `ZELO_API_URL`, `ZELO_GESTOR_TOKEN` | API do app Zelo (ex.: `https://zelo-api-fxru.onrender.com` e o código de gestor) | não |
 | `CLIMA_HABILITADO` | `0` desliga a consulta de chuva | não |
 
-**Enviar e-mail de verdade (gratuito):**
+Se quiser que os e-mails sejam enviados de verdade, tem duas opções gratuitas:
 
-- **Mailtrap** (recomendado para testes): crie uma conta grátis, abra *Email Testing > Inboxes* e
-  copie host, porta, usuário e senha para o `.env` com `EMAIL_MODO=smtp`. Os e-mails aparecem na
-  caixa do Mailtrap e não chegam a ninguém de verdade.
-- **SMTP local, sem conta nenhuma:** em um terminal rode `python -m scripts.servidores_teste`; em
-  outro rode `EMAIL_MODO=smtp SMTP_HOST=127.0.0.1 SMTP_PORTA=2525 SMTP_TLS=0 python main.py --resetar --demo`.
-  O primeiro terminal mostra cada e-mail recebido.
+- Mailtrap: crie uma conta grátis, vá em *Email Testing > Inboxes* e copie host, porta, usuário e
+  senha para o `.env`, com `EMAIL_MODO=smtp`. Os e-mails caem na caixa do Mailtrap e não chegam a
+  ninguém de verdade, por isso é o que recomendamos para testar.
+- SMTP local, sem criar conta: num terminal rode `python -m scripts.servidores_teste` e em outro rode
+  `EMAIL_MODO=smtp SMTP_HOST=127.0.0.1 SMTP_PORTA=2525 SMTP_TLS=0 python main.py --resetar --demo`.
+  O primeiro terminal vai mostrando cada e-mail que chega.
 
 ## 5. Estrutura do repositório
 
@@ -200,24 +203,26 @@ demo_colab.ipynb             a mesma execução em notebook, para rodar no Googl
 | Caso que o robô não deve decidir sozinho | fila de revisão humana (confiança abaixo de 55% ou fora do escopo) | `regras.decidir` |
 | Caso **crítico** com baixa confiança | despachado mesmo assim **e** marcado para revisão: segurança antes da fila | `robo.executar` |
 
-Toda execução gera relatório, registro na tabela `execucoes` e linhas no `logs/robo.log`. O
-status final é `concluido`, `concluido_com_alertas` ou `falhou`.
+Toda execução gera um relatório, uma linha na tabela `execucoes` e registros no `logs/robo.log`. No
+fim, o status fica como `concluido`, `concluido_com_alertas` ou `falhou`.
 
 ## 7. Evidências de validação
 
-Tudo abaixo é reproduzível com `python -m scripts.validar`, que gera
-[`docs/evidencias/resultado_validacao.md`](docs/evidencias/resultado_validacao.md) com as tabelas
-completas, a matriz de confusão, a lista de todos os erros e os trechos de log de cada cenário.
+Dá para reproduzir tudo desta seção rodando `python -m scripts.validar`. O script gera o arquivo
+[`docs/evidencias/resultado_validacao.md`](docs/evidencias/resultado_validacao.md), com as tabelas
+completas, a matriz de confusão, a lista de todos os erros e trechos do log de cada cenário.
 
 ### 7.1 Como medimos
 
-- **Base de treino:** 880 relatos sintéticos montados por combinação de trechos
-  (`scripts/gerar_dados.py`, semente fixa).
-- **Conjunto de desenvolvimento:** 72 relatos escritos à mão, usados para encontrar os erros da
-  primeira versão das regras e corrigi-los.
-- **Conjunto de teste:** 64 relatos novos (8 por categoria), escritos **depois** de o modelo e as
-  regras estarem prontos. Nada foi ajustado olhando para ele. Nenhuma frase do teste aparece no
-  treino. É o resultado que vale.
+Usamos três conjuntos de dados:
+
+- Treino: 880 relatos sintéticos, montados combinando trechos de frases (`scripts/gerar_dados.py`,
+  com semente fixa para sempre gerar o mesmo arquivo).
+- Desenvolvimento: 72 relatos que escrevemos à mão. Usamos esse conjunto para achar os erros da
+  primeira versão das regras e corrigir.
+- Teste: 64 relatos novos, 8 de cada categoria. Escrevemos esses só depois de terminar o modelo e as
+  regras, e não mudamos nada depois de ver o resultado. Nenhuma frase do teste aparece no treino.
+  Os números que importam são os deste conjunto.
 
 ### 7.2 Resultado no conjunto de teste (64 relatos)
 
@@ -232,44 +237,51 @@ completas, a matriz de confusão, a lista de todos os erros e os trechos de log 
 | Casos críticos reconhecidos como críticos | **4 de 8** |
 | Falsos críticos | 0 |
 
-No conjunto de desenvolvimento, as regras v1 acertavam 61,1% da urgência e só 5 de 8 críticos.
-Depois da correção (v2), o mesmo conjunto passou para 90,3% e 8 de 8. A queda para 67,2% e 4 de 8
-no conjunto novo mostra o quanto o ajuste ficou "colado" nos exemplos de desenvolvimento, e é
-por isso que separamos os dois.
+Na primeira versão das regras, o conjunto de desenvolvimento dava 61,1% de acerto na urgência e só 5
+dos 8 críticos eram detectados. Corrigimos as regras e o mesmo conjunto subiu para 90,3% e 8 de 8.
+No conjunto de teste, porém, caiu para 67,2% e 4 de 8. Ou seja, parte da melhora foi só porque
+ajustamos as regras em cima daqueles exemplos. Foi exatamente para enxergar isso que separamos
+desenvolvimento e teste.
 
 ### 7.3 Análise dos erros
 
-**Categoria.** Dos 8 erros, 4 foram pegos pela revisão humana (confiança baixa). Os outros 4:
+Categoria: o modelo errou 8 relatos. Quatro deles tinham confiança baixa e foram para a revisão
+humana. Os outros quatro passaram direto:
 
-- dois são relatos que realmente misturam categorias: "buraco perto da faixa de pedestre" virou
-  sinalização com 86% de confiança, e "árvore bloqueando a placa de pare" virou sinalização. Uma
-  palavra forte de outra categoria domina o texto, e o modelo fica confiante no lugar errado;
-- "rua de terra virou lama" e "academia ao ar livre enferrujada" usam vocabulário que não existe
-  na base de treino.
+- Dois misturam assuntos de verdade. "Buraco perto da faixa de pedestre" foi classificado como
+  sinalização, com 86% de confiança, e "árvore bloqueando a placa de pare" também virou sinalização.
+  Quando aparece uma palavra muito ligada a outra categoria, o modelo vai nela e ainda fica confiante.
+- Os outros dois, "rua de terra virou lama" e "academia ao ar livre enferrujada", usam palavras que
+  não existem na base de treino.
 
-**Urgência.** Dos 21 erros, 11 são relatos de impacto baixo que o robô marcou como médio. É um
-erro para o lado seguro: o prazo de referência fica menor do que o necessário. O problema real são
-os **8 casos subestimados**, entre eles 4 críticos: "caixa de luz aberta com os fios aparecendo",
-"chão afundou e dá pra ver o cano", "córrego subindo com gente atravessando a ponte" e "galho
-rachou e está quase caindo" (este último ficou como alta). As regras reconhecem o vocabulário que
-conhecem ("fio caído", "cratera", "ilhado") e não generalizam para outras formas de descrever o
-mesmo perigo.
+Urgência: foram 21 erros. Em 11 deles o relato era de baixo impacto e o robô marcou como média.
+Esse erro não preocupa muito, porque o caso só ganha um prazo menor do que precisava. O que preocupa
+são os 8 casos em que a urgência ficou abaixo do certo, e 4 deles eram críticos:
+
+- "caixa de luz aberta com os fios aparecendo";
+- "chão afundou e dá pra ver o cano";
+- "córrego subindo com gente atravessando a ponte";
+- "galho rachou e está quase caindo" (esse ficou como alta).
+
+As regras reconhecem as palavras que estão nelas, como "fio caído", "cratera" e "ilhado". Se a
+pessoa descreve o mesmo perigo com outras palavras, a regra não pega.
 
 ### 7.4 Limites da solução
 
-- A urgência por regras é auditável, mas tem cobertura limitada. **Por isso o robô não é a única
-  barreira:** todo e-mail ao cidadão orienta ligar para a Defesa Civil (199) ou os Bombeiros (193)
-  em caso de risco imediato, e os relatos do app já chegam com a urgência confirmada pelo cidadão.
-- Os dados são sintéticos e o conjunto de teste é pequeno (64 relatos, rotulados pela própria
-  equipe). Os números indicam a ordem de grandeza, não o desempenho em produção.
-- A confiança do modelo não é calibrada: em textos com palavras fortes de outra categoria ele erra
-  com confiança alta, e a revisão humana não pega esses casos.
-- Coordenadas são o centro do distrito, então a chuva prevista é a do bairro, não a da rua.
+- A urgência calculada por regras é fácil de auditar, mas não cobre todo jeito de escrever. Por isso
+  o robô não é a única proteção: todo e-mail para o cidadão diz para ligar na Defesa Civil (199) ou
+  nos Bombeiros (193) se houver risco imediato, e os relatos que vêm do app já chegam com a urgência
+  confirmada pelo próprio cidadão.
+- Os dados são sintéticos e o conjunto de teste é pequeno (64 relatos, rotulados por nós mesmos). Os
+  números dão uma ideia de como o robô se comporta, mas não dizem como ele iria em produção.
+- A confiança do modelo nem sempre é confiável. Com palavras fortes de outra categoria, ele erra
+  achando que acertou, e esses casos não vão para a revisão humana.
+- A previsão de chuva é do centro do distrito, não da rua exata do relato.
 
-**Próximos passos:** treinar a urgência como um segundo modelo, usando como rótulo as urgências que
-os cidadãos confirmam no app (dado rotulado de graça); mandar para revisão humana qualquer relato
-com vocabulário de perigo que não chegou a "alta"; e usar o LLM do app como segunda opinião só nos
-casos de baixa confiança, sempre com o texto já anonimizado.
+O que faríamos em seguida: treinar um segundo modelo só para a urgência, usando como rótulo as
+urgências que os cidadãos confirmam no app; mandar para revisão humana todo relato que tenha palavra
+de perigo e não tenha chegado em "alta"; e chamar o LLM do app como segunda opinião nos casos de
+baixa confiança, sempre com o texto já anonimizado.
 
 ### 7.5 Cenários ponta a ponta e casos de falha
 
@@ -290,33 +302,35 @@ Cada cenário roda o robô inteiro numa pasta temporária. Os 10 passaram:
 
 ## 8. Proteção de dados, ética e ODS
 
-**Proteção de dados.** O robô segue a LGPD pelo princípio da necessidade (art. 6º, III): o texto
-do relato é anonimizado antes de ser classificado, gravado ou colocado em qualquer planilha ou
-e-mail; o banco não guarda o texto original. O e-mail do cidadão só é usado se ele autorizou o
-contato (art. 7º, I), fica numa tabela separada e é **apagado logo depois** da confirmação ser
-enviada (art. 16). O log mascara e-mails e passa por um filtro que remove CPF e telefone de
-qualquer mensagem. A classificação roda localmente, então nenhum relato vai para API externa; a
-Open-Meteo recebe só a coordenada do centro do bairro. Senhas e tokens ficam no `.env`, fora do
-repositório. Todo o projeto usa dados sintéticos e e-mails do domínio reservado `example.com`.
+**Proteção de dados.** Seguimos o princípio da necessidade da LGPD (art. 6º, III): o texto do relato
+é anonimizado antes de ser classificado, salvo no banco ou colocado em planilha ou e-mail, e o texto
+original não fica guardado. O e-mail do cidadão só é usado se ele autorizou o contato (art. 7º, I).
+Ele fica numa tabela separada e é apagado assim que a confirmação é enviada (art. 16). No log, os
+e-mails aparecem mascarados, e um filtro remove CPF e telefone de qualquer mensagem. Como a
+classificação roda na própria máquina, nenhum relato é enviado para API externa. A Open-Meteo só
+recebe a coordenada do centro do bairro. Senhas e tokens ficam no `.env`, fora do repositório. Todos
+os dados do projeto são sintéticos, e os e-mails usam o domínio `example.com`, que é reservado para
+testes.
 
-**Ética.** A IA classifica, mas não decide sozinha nos casos difíceis: baixa confiança e relatos
-fora do escopo vão para um servidor, e cada urgência vem com a justificativa por escrito, o que
-permite contestar a decisão. Um risco que levamos a sério é o viés de linguagem: quem escreve com
-gírias, erros de digitação ou poucas palavras (perfil comum de quem tem menos acesso à educação)
-pode ter o relato classificado pior. Por isso o modelo usa n-gramas de caracteres (tolera
-"burako" ou "calsada") e a regra de público vulnerável sobe a urgência quando o relato cita
-idosos, crianças, pessoas com deficiência, escola ou UBS. Outro risco é a automação esconder
-erros: o robô mostra no relatório quantos casos foram para revisão e publicamos os erros medidos,
-incluindo os críticos que ele deixou passar.
+**Ética.** Nos casos difíceis, quem decide é uma pessoa: relatos com baixa confiança ou fora do
+escopo vão para um servidor. Cada urgência vem com o motivo escrito, então dá para discordar da
+decisão e saber por quê. Um risco que nos preocupou foi o viés de linguagem. Quem escreve com gíria,
+com erro de digitação ou com poucas palavras (o que é mais comum entre pessoas com menos acesso à
+educação) poderia ter o relato mal classificado. Para diminuir isso, o modelo também olha pedaços de
+palavras, então entende "burako" e "calsada", e a urgência sobe quando o relato fala de idosos,
+crianças, pessoas com deficiência, escola ou UBS. Outro risco é a automação esconder os próprios
+erros. Por isso o relatório mostra quantos casos foram para revisão, e este README mostra os erros
+que medimos, inclusive os casos críticos que o robô não pegou.
 
-**ODS.** **ODS 11** (meta 11.7, espaços públicos seguros, inclusivos e acessíveis): o robô
-prioriza o que põe pedestres em risco, como calçadas sem rampa, ruas escuras e buracos.
-**ODS 3** (meta 3.6, reduzir mortes e ferimentos no trânsito): semáforos apagados, faixas
-apagadas e buracos onde motociclistas caem ganham prioridade. **ODS 16** (meta 16.6, instituições
-eficazes e transparentes): o cidadão recebe protocolo e prazo, e cada decisão do robô fica
-registrada e explicada.
+**ODS.** O projeto se liga a três ODS:
+- ODS 11, meta 11.7 (espaços públicos seguros, inclusivos e acessíveis): calçada sem rampa, rua
+  escura e buraco, que colocam o pedestre em risco, vão para o topo da fila.
+- ODS 3, meta 3.6 (reduzir mortes e ferimentos no trânsito): semáforo apagado, faixa apagada e
+  buraco onde moto já caiu ganham prioridade.
+- ODS 16, meta 16.6 (instituições eficazes e transparentes): o cidadão recebe protocolo e prazo, e
+  cada decisão do robô fica registrada com o motivo.
 
 ## 9. Ferramentas
 
-Python, Pandas, openpyxl, scikit-learn, requests, smtplib, SQLite e a API pública Open-Meteo.
-Tudo gratuito. Nenhum LLM é usado neste robô.
+Python, Pandas, openpyxl, scikit-learn, requests, smtplib, SQLite e a API pública Open-Meteo. Todas
+são gratuitas, e o robô não usa LLM.
