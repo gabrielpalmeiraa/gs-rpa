@@ -1,7 +1,7 @@
-# Relatório de execução do robô Zelo: 20261118-141034-272
+# Relatório de execução do robô Zelo: 20261119-162556-795
 
 - Status: **concluido_com_alertas**
-- Início: 2026-11-18T14:10:34  |  Fim: 2026-11-18T14:10:34  |  Duração: 0.3 s
+- Início: 2026-11-19T16:25:56  |  Fim: 2026-11-19T16:26:04  |  Duração: 7.5 s
 - Modo de e-mail: arquivo
 
 ## Números da execução
@@ -22,13 +22,13 @@
 | Integração | Situação |
 |---|---|
 | API do app Zelo | não usada: lido o arquivo exportado (app_zelo_*.json) |
-| Open-Meteo (chuva) | desabilitada |
+| Open-Meteo (chuva) | ok |
 
 ## Arquivos de entrada
 
-- OK: sp156_20261118.csv
-- OK: subprefeitura_campo_limpo_20261118.xlsx
-- OK: app_zelo_20261118.json
+- OK: sp156_20261119.csv
+- OK: subprefeitura_campo_limpo_20261119.xlsx
+- OK: app_zelo_20261119.json
 
 ## Novas solicitações por urgência
 
